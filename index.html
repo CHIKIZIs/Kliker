@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nasvai.coins: INFINITY 3D</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;900&family=Orbitron:wght@700;900&display=swap');
+
+        :root {
+            --neon-red: #ff3300; --neon-orange: #ff8800; --gold: #ffd700; 
+            --nitro: #a020f0; --energy: #fff200; --rebirth: #00ffff;
+            --bg: #050505; --card: rgba(20, 20, 20, 0.8); --border: rgba(255, 51, 0, 0.3);
+            /* Материалы монет */
+            --m-silver: linear-gradient(135deg, #bdc3c7, #2c3e50);
+            --m-gold: linear-gradient(135deg, #f1c40f, #964b00);
+            --m-diamond: linear-gradient(135deg, #e0ffff, #00d4ff);
+            --m-emerald: linear-gradient(135deg, #2ecc71, #004d00);
+            --m-ruby: linear-gradient(135deg, #e74c3c, #4a0000);
+            --m-amethyst: linear-gradient(135deg, #9b59b6, #341f97);
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; user-select: none; -webkit-user-select: none; }
+        
+        body {
+            margin: 0; background: var(--bg); color: #fff; font-family: 'Montserrat', sans-serif;
+            min-height: 100vh; overflow: hidden; display: flex; flex-direction: column; align-items: center;
+            perspective: 1500px; touch-action: none;
+            background-image: radial-gradient(circle at 50% 50%, #1a0500 0%, #050505 80%);
+        }
+
+        /* HEADER */
+        header {
+            width: 100%; padding: 20px; background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(15px); border-bottom: 2px solid var(--neon-red);
+            display: flex; justify-content: space-between; align-items: center; z-index: 1000;
+            box-shadow: 0 5px 20px rgba(255, 51, 0, 0.2);
+        }
+        #balance-display { font-family: 'Orbitron', sans-serif; font-size: 26px; color: var(--neon-orange); text-shadow: 0 0 15px var(--neon-red); }
+        .reb-count { font-size: 11px; color: var(--rebirth); font-weight: 900; text-transform: uppercase; }
+
+        /* 3D COIN ENGINE */
+        .stage { height: 350px; display: flex; align-items: center; justify-content: center; width: 100%; position: relative; }
+        
+        #coin-container { width: 220px; height: 220px; position: relative; perspective: 1000px; z-index: 50; }
+        
+        #coin {
+            width: 100%; height: 100%; position: absolute;
+            transform-style: preserve-3d; cursor: grab;
+            transition: transform 0.1s ease-out;
+        }
+        #coin:active { cursor: grabbing; }
+
+        .coin-side {
+            position: absolute; width: 100%; height: 100%; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 110px; font-family: 'Orbitron', sans-serif; font-weight: 900; color: rgba(0,0,0,0.6);
+            backface-visibility: hidden; border: 4px solid rgba(255,255,255,0.2);
+            box-shadow: inset 0 0 40px rgba(0,0,0,0.8);
+        }
+
+        .front { transform: translateZ(15px); background: var(--m-silver); }
+        .back  { transform: rotateY(180deg) translateZ(15px); background: var(--m-silver); }
+        
+        .edge {
+            position: absolute; width: 100%; height: 100%; border-radius: 50%;
+            transform: translateZ(0); background: #111; border: 15px solid #222;
+        }
+
+        /* UI ELEMENTS */
+        .stats { width: 85%; max-width: 400px; z-index: 10; }
+        .bar-wrap { height: 12px; background: #111; border-radius: 4px; border: 1px solid var(--neon-red); margin: 10px 0 20px; overflow: hidden; }
+        .bar-fill { height: 100%; width: 100%; transition: width 0.3s; }
+
+        .menu {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+            width: 90%; max-width: 450px; padding-bottom: 40px; z-index: 10;
+        }
+        
+        /* КНОПКИ И ЭФФЕКТЫ */
+        .btn {
+            background: var(--card); border: 1px solid var(--border);
+            padding: 16px; border-radius: 8px; color: #fff;
+            font-weight: 900; font-size: 11px; text-transform: uppercase;
+            text-align: center; cursor: pointer; transition: all 0.2s;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.5);
+            font-family: 'Orbitron', sans-serif;
+        }
+        .btn:active { transform: translateY(4px); box-shadow: 0 0 0 rgba(0,0,0,0.5); }
+        
+        .btn-shop { border-color: #2ecc71; color: #2ecc71; }
+        .btn-shop:hover { background: rgba(46, 204, 113, 0.1); box-shadow: 0 0 15px rgba(46, 204, 113, 0.4); }
+        
+        .btn-wheel { border-color: var(--gold); color: var(--gold); }
+        .btn-wheel:hover { background: rgba(255, 215, 0, 0.1); box-shadow: 0 0 15px rgba(255, 215, 0, 0.4); }
+        
+        .btn-main { grid-column: span 2; border-color: var(--rebirth); color: var(--rebirth); background: rgba(0,255,255,0.05); }
+        .btn-main:hover { box-shadow: 0 0 20px rgba(0, 255, 255, 0.5); }
+
+        .btn-idea { grid-column: span 2; border-color: var(--neon-orange); color: var(--neon-orange); text-decoration: none; display: block; }
+
+        /* MODALS */
+        .modal {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.95);
+            display: none; z-index: 2000; flex-direction: column; padding: 30px;
+            backdrop-filter: blur(10px); animation: fadeIn 0.3s forwards;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .content { flex-grow: 1; overflow-y: auto; margin: 20px 0; padding-right: 10px; }
+        
+        .item {
+            background: var(--card); border: 1px solid var(--border);
+            padding: 15px; border-radius: 8px; margin-bottom: 10px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        
+        .buy { background: var(--neon-red); color: #fff; border: none; padding: 10px 15px; border-radius: 4px; font-family: 'Orbitron'; font-weight: 900; font-size: 10px; cursor: pointer; transition: 0.2s; }
+        .buy:hover { background: var(--neon-orange); box-shadow: 0 0 10px var(--neon-orange); }
+        .buy:disabled { background: #555; box-shadow: none; cursor: not-allowed; }
+
+        /* ЭФФЕКТЫ ЧАСТИЦ (Добавка от меня) */
+        .particle {
+            position: absolute; width: 8px; height: 8px; background: var(--neon-orange);
+            border-radius: 50%; pointer-events: none; z-index: 100;
+            box-shadow: 0 0 10px var(--neon-red);
+            animation: explode 0.6s ease-out forwards;
+        }
+        @keyframes explode {
+            0% { transform: scale(1) translate(0, 0); opacity: 1; }
+            100% { transform: scale(0) translate(var(--dx), var(--dy)); opacity: 0; }
+        }
+
+        .floating { position: absolute; pointer-events: none; animation: floatUp 0.8s ease-out forwards; font-weight: 900; font-size: 32px; z-index: 5000; font-family: 'Orbitron'; }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-150px) scale(1.2); } }
+        
+        /* КОЛЕСО ФОРТУНЫ */
+        .wheel-box { position: relative; width: 250px; height: 250px; margin: 0 auto; border-radius: 50%; border: 4px solid var(--neon-orange); box-shadow: 0 0 30px rgba(255, 136, 0, 0.4); overflow: hidden; }
+        .real-wheel { width: 100%; height: 100%; border-radius: 50%; transition: transform 4s cubic-bezier(0.1, 2.7, 0.2, 1); position: relative; }
+        .wheel-slice { position: absolute; top: 0; right: 0; width: 50%; height: 50%; transform-origin: 0% 100%; display: flex; align-items: center; justify-content: center; clip-path: polygon(0 100%, 100% 0, 100% 100%); }
+        .wheel-text { position: absolute; transform: rotate(45deg) translateY(-60px); color: #fff; font-weight: bold; font-size: 12px; font-family: 'Orbitron'; text-shadow: 1px 1px 2px #000; }
+        .wheel-arrow { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 30px solid var(--neon-red); z-index: 10; filter: drop-shadow(0 0 5px #000); }
+
+        /* КРАСИВЫЙ БОНУС (Метеорит) */
+        .tech-comet {
+            position: fixed; width: 60px; height: 15px; background: #fff;
+            border-radius: 10px; cursor: pointer; z-index: 9999;
+            box-shadow: 0 0 20px 10px var(--neon-orange), inset 0 0 10px var(--neon-red);
+            transition: transform 5s linear; pointer-events: auto;
+        }
+        .tech-comet::after {
+            content: ''; position: absolute; left: -100px; top: 0;
+            width: 100px; height: 100%; background: linear-gradient(to right, transparent, var(--neon-orange));
+            border-radius: 10px;
+        }
+        
+        .ach-img { width: 40px; height: 40px; object-fit: contain; margin-right: 15px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <button class="btn" style="padding:10px 20px" onclick="UI.open('info')">INFO</button>
+    <div style="text-align:right">
+        <div id="balance-display">0</div>
+        <div id="reb-label" class="reb-count">ПЕРЕРОЖДЕНИЯ: 0</div>
+    </div>
+</header>
+
+<div class="stage">
+    <div id="coin-container">
+        <div id="coin" onpointerdown="Game.startInteract(event)">
+            <div class="edge"></div>
+            <div class="coin-side front" id="coin-face-f">N</div>
+            <div class="coin-side back" id="coin-face-b">N</div>
+        </div>
+    </div>
+</div>
+
+<div class="stats">
+    <div style="display:flex; justify-content:space-between; font-size:10px; font-weight:900;">
+        <span id="l-nrg">ЭНЕРГИЯ</span> <span id="v-nrg">250/250</span>
+    </div>
+    <div class="bar-wrap">
+        <div id="f-nrg" class="bar-fill" style="background:var(--energy); box-shadow:0 0 15px var(--energy)"></div>
+    </div>
+    <div style="display:flex; justify-content:space-between; font-size:10px; font-weight:900; color:var(--nitro)">
+        <span id="l-ntr">NITRO BOOST</span> <span id="v-ntr">0%</span>
+    </div>
+    <div class="bar-wrap">
+        <div id="f-ntr" class="bar-fill" style="background:var(--nitro); width:0%; box-shadow:0 0 15px var(--nitro)"></div>
+    </div>
+</div>
+
+<div class="menu">
+    <div class="btn btn-shop" onclick="UI.open('shop')">МАГАЗИН</div>
+    <div class="btn btn-wheel" onclick="UI.open('wheel')">КОЛЕСО</div>
+    <div class="btn" onclick="UI.open('top')">РЕЙТИНГ</div>
+    <div class="btn" onclick="UI.open('ach')">УСПЕХИ</div>
+    <div class="btn btn-main" onclick="UI.open('reb')">ПЕРЕРОЖДЕНИЕ</div>
+    <div class="btn" onclick="UI.open('promo')">ПРОМОКОДЫ</div>
+    <a href="mailto:cki78278@gmail.com?subject=Идея для Nasvai.coins" class="btn btn-idea">💡 ПРЕДЛОЖИТЬ ИДЕЮ</a>
+</div>
+
+<div class="modal" id="modal">
+    <div style="display:flex; justify-content:space-between; align-items:center">
+        <h2 id="m-title" style="font-family:'Orbitron'; margin:0; color:var(--neon-orange)">MENU</h2>
+        <button class="buy" style="background:#222; border:1px solid #555" onclick="UI.close()">✕</button>
+    </div>
+    <div class="content" id="m-body"></div>
+</div>
+
+<script>
+    const Sounds = {
+        ctx: new (window.AudioContext || window.webkitAudioContext)(),
+        play(type) {
+            if (this.ctx.state === 'suspended') this.ctx.resume();
+            const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+            o.connect(g); g.connect(this.ctx.destination);
+            if(type==='tap') { o.frequency.setTargetAtTime(320, this.ctx.currentTime, 0.05); g.gain.setValueAtTime(0.15, this.ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1); o.start(); o.stop(this.ctx.currentTime + 0.1); }
+            if(type==='buy') { o.type='triangle'; o.frequency.setValueAtTime(600, this.ctx.currentTime); o.frequency.exponentialRampToValueAtTime(1000, this.ctx.currentTime+0.2); g.gain.setValueAtTime(0.1, this.ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2); o.start(); o.stop(this.ctx.currentTime + 0.2); }
+            if(type==='fail') { o.frequency.setValueAtTime(120, this.ctx.currentTime); g.gain.setValueAtTime(0.2, this.ctx.currentTime); g.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.3); o.start(); o.stop(this.ctx.currentTime + 0.3); }
+            if(type==='reb') { o.type='sawtooth'; o.frequency.linearRampToValueAtTime(1200, this.ctx.currentTime+1); g.gain.setValueAtTime(0.05, this.ctx.currentTime); g.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime+1); o.start(); o.stop(this.ctx.currentTime+1); }
+        }
+    };
+
+    const Game = {
+        score: 0, total: 0, pC: 1, pS: 0, nrg: 250, maxNrg: 250, ntr: 0, reb: 0,
+        name: null, isN: false, lastClickTime: 0,
+        lastSpin: 0, extraSpins: 0, currentRotX: 0, currentRotY: 0,
+
+        upgrades: [
+            {id:0, n:"Click Force", d:"Клик +2", c:200, p:2, s:0},
+            {id:1, n:"Auto Miner", d:"Доход +30/сек", c:3000, p:0, s:30},
+            {id:2, n:"Core Engine", d:"Доход +400/сек", c:80000, p:0, s:400},
+            {id:3, n:"Master Link", d:"Клик +300", c:700000, p:300, s:0}
+        ],
+
+        init() {
+            this.load();
+            if(!this.name) this.registerUser();
+            
+            this.update();
+            setInterval(() => {
+                if(this.pS > 0) { let g = this.pS * (this.reb + 1); this.score += g; this.total += g; }
+                if(this.nrg < this.maxNrg) this.nrg = Math.min(this.maxNrg, this.nrg + 0.5);
+                this.update();
+            }, 1000);
+            
+            // Красивый метеорит (реже, раз в 2 минуты)
+            setInterval(() => this.spawnComet(), 120000);
+            
+            this.setup3D();
+        },
+
+        registerUser() {
+            let nick = prompt("Добро пожаловать в Nasvai.coins!\nВведите ваш никнейм для регистрации в рейтинге:");
+            if(nick && nick.trim() !== "") {
+                this.name = nick.trim().substring(0, 15);
+            } else {
+                this.name = "Player_" + Math.floor(Math.random()*9999);
+            }
+            this.save();
+        },
+
+        setup3D() {
+            let isDragging = false;
+            let startX, startY;
+            
+            window.addEventListener('pointermove', (e) => {
+                if(!isDragging) return;
+                let deltaX = e.clientX - startX;
+                let deltaY = e.clientY - startY;
+                this.currentRotY += deltaX * 0.5;
+                this.currentRotX -= deltaY * 0.5;
+                document.getElementById('coin').style.transform = `rotateX(${this.currentRotX}deg) rotateY(${this.currentRotY}deg)`;
+                startX = e.clientX; startY = e.clientY;
+            });
+
+            window.addEventListener('pointerup', () => { isDragging = false; });
+
+            this.startInteract = (e) => {
+                isDragging = true;
+                startX = e.clientX; startY = e.clientY;
+                this.tap(e); // При первом касании - клик
+            };
+        },
+
+        createParticles(x, y) {
+            for(let i=0; i<4; i++) {
+                let p = document.createElement('div');
+                p.className = 'particle';
+                let angle = Math.random() * Math.PI * 2;
+                let dist = Math.random() * 60 + 20;
+                p.style.setProperty('--dx', Math.cos(angle)*dist + 'px');
+                p.style.setProperty('--dy', Math.sin(angle)*dist + 'px');
+                p.style.left = x + 'px';
+                p.style.top = y + 'px';
+                document.body.appendChild(p);
+                setTimeout(() => p.remove(), 600);
+            }
+        },
+
+        tap(e) {
+            // АНТИ-АВТОКЛИКЕР
+            if(!e.isTrusted) return; // Блокировка программных кликов
+            let now = Date.now();
+            if(now - this.lastClickTime < 35) return; // Нельзя кликать быстрее ~28 раз в секунду (пальцами так не выйдет)
+            this.lastClickTime = now;
+
+            if(this.nrg < 1) { Sounds.play('fail'); return; }
+            let m = (this.reb + 1) * (this.isN ? 5 : 1);
+            let g = this.pC * m;
+            this.score += g; this.total += g; this.nrg--;
+            if(!this.isN) { this.ntr += 1.5; if(this.ntr >= 100) this.nitro(); }
+            
+            Sounds.play('tap');
+            this.createParticles(e.clientX, e.clientY);
+
+            this.pop(e.clientX, e.clientY, `+${Math.floor(g)}`);
+            this.update();
+        },
+
+        nitro() {
+            this.isN = true; this.ntr = 100;
+            document.body.style.boxShadow = "inset 0 0 150px rgba(160, 32, 240, 0.4)";
+            setTimeout(() => { this.isN = false; this.ntr = 0; document.body.style.boxShadow = "none"; }, 7000);
+        },
+
+        spawnComet() {
+            if(Math.random() > 0.6) return;
+            let m = document.createElement('div');
+            m.className = 'tech-comet';
+            let startY = Math.random() * 60 + 10;
+            m.style.top = `${startY}%`;
+            m.style.left = '-100px';
+            document.body.appendChild(m);
+            
+            setTimeout(() => m.style.transform = `translate(${window.innerWidth + 300}px, 0)`, 50);
+            
+            m.onpointerdown = (e) => {
+                e.stopPropagation(); e.preventDefault();
+                let bonus = this.pC * 500 + 10000;
+                this.score += bonus; this.total += bonus;
+                this.nrg = this.maxNrg;
+                Sounds.play('reb');
+                this.pop(e.clientX, e.clientY, `+${bonus.toLocaleString()} & МАКС. ЭНЕРГИЯ!`);
+                this.update();
+                m.remove();
+            };
+            setTimeout(() => m.remove(), 5050);
+        },
+
+        update() {
+            document.getElementById('balance-display').innerText = Math.floor(this.score).toLocaleString();
+            document.getElementById('reb-label').innerText = `ПЕРЕРОЖДЕНИЯ: ${this.reb}`;
+            document.getElementById('v-nrg').innerText = Math.floor(this.nrg) + "/" + this.maxNrg;
+            document.getElementById('f-nrg').style.width = (this.nrg/this.maxNrg*100) + "%";
+            document.getElementById('v-ntr').innerText = Math.floor(this.ntr) + "%";
+            document.getElementById('f-ntr').style.width = this.ntr + "%";
+
+            const ff = document.getElementById('coin-face-f');
+            const fb = document.getElementById('coin-face-b');
+            
+            let bg = "var(--m-silver)";
+            let shadow = "inset 0 0 40px rgba(0,0,0,0.8)";
+            
+            if(this.total >= 1000000000) { bg = "var(--m-amethyst)"; shadow = "0 0 60px #9b59b6"; }
+            else if(this.total >= 100000000) { bg = "var(--m-ruby)"; shadow = "0 0 50px red"; }
+            else if(this.total >= 10000000) { bg = "var(--m-emerald)"; shadow = "0 0 40px #2ecc71"; }
+            else if(this.total >= 1000000) { bg = "var(--m-diamond)"; shadow = "0 0 30px #00d4ff"; }
+            else if(this.total >= 100000) { bg = "var(--m-gold)"; shadow = "0 0 20px #f1c40f"; }
+
+            ff.style.background = bg; ff.style.boxShadow = shadow;
+            fb.style.background = bg; fb.style.boxShadow = shadow;
+        },
+
+        pop(x, y, t) {
+            const p = document.createElement('div'); p.className='floating'; p.innerText=t;
+            p.style.left=x+'px'; p.style.top=y+'px'; p.style.color=this.isN?'var(--nitro)':'var(--neon-orange)';
+            document.body.appendChild(p); setTimeout(()=>p.remove(), 800);
+        },
+
+        save() { localStorage.setItem('nasvai_v1', JSON.stringify({n:this.name, s:this.score, t:this.total, c:this.pC, a:this.pS, up:this.upgrades, m:this.maxNrg, r:this.reb, ls:this.lastSpin, es:this.extraSpins})); },
+        load() { let d = JSON.parse(localStorage.getItem('nasvai_v1')); if(d) Object.assign(this, d); }
+    };
+
+    const UI = {
+        open(type) {
+            const m = document.getElementById('modal'), b = document.getElementById('m-body');
+            m.style.display = 'flex'; b.innerHTML = '';
+            document.getElementById('m-title').innerText = type.toUpperCase();
+
+            if(type==='info') {
+                b.innerHTML = `
+                    <div style="text-align:center; padding-top:20px;">
+                        <h2 style="color:var(--neon-orange); font-family:'Orbitron';">Nasvai.coins</h2>
+                        <p>Версия: INFINITY 3D (Anti-Clicker Active)</p>
+                        <br>
+                        <p style="color:#aaa; font-size:12px;">Официальный канал:</p>
+                        <a href="https://t.me/KINETIK_k" target="_blank" style="color:var(--neon-red); font-size:18px; font-weight:900; text-decoration:none; display:block; margin-top:10px;">@KINETIK_k</a>
+                    </div>
+                `;
+            }
+            if(type==='wheel') {
+                let now = Date.now();
+                let cd = 24 * 60 * 60 * 1000;
+                let canSpin = (now - Game.lastSpin > cd) || Game.extraSpins > 0;
+                let timeStr = "";
+                
+                if(!canSpin) {
+                    let left = cd - (now - Game.lastSpin);
+                    let h = Math.floor(left / 3600000);
+                    let min = Math.floor((left % 3600000) / 60000);
+                    timeStr = `<p style="color:#ff4444; font-size:12px; font-weight:bold;">Следующая бесплатная через: ${h}ч ${min}м</p>`;
+                }
+                
+                b.innerHTML = `
+                    <div style="text-align:center; padding:10px;">
+                        <p style="color:#aaa; font-size:11px;">Выиграй до 200,000 или ДЖЕКПОТ.</p>
+                        <p style="color:var(--rebirth); font-weight:bold; margin-bottom: 20px;">Доп. прокрутки: ${Game.extraSpins}</p>
+                        
+                        <div class="wheel-box">
+                            <div class="wheel-arrow"></div>
+                            <div class="real-wheel" id="visual-wheel">
+                                </div>
+                        </div>
+
+                        ${timeStr}
+                        <h3 id="wheel-res" style="color:var(--gold); font-family:'Orbitron'"></h3>
+                        <button class="buy" style="width:100%; height:60px; font-size:16px; margin-top:15px;" id="spin-btn" ${canSpin?'':'disabled'} onclick="Logic.spinWheel(this)">КРУТИТЬ</button>
+                    </div>
+                `;
+                Logic.drawWheel();
+            }
+            if(type==='shop') {
+                Game.upgrades.forEach(u => {
+                    b.innerHTML += `<div class="item"><div style="font-family:'Orbitron'"><b>${u.n}</b><br><span style="color:#aaa; font-size:10px">${u.d}</span><br><span style="color:var(--neon-orange)">🪙 ${u.c.toLocaleString()}</span></div><button class="buy" onclick="Logic.buy(${u.id})">КУПИТЬ</button></div>`;
+                });
+            }
+            if(type==='top') {
+                // Псевдо-БД (Показывает реального игрока и сохраняет его).
+                // Для настоящего глобального онлайна потребуется подключение к Firebase или Node.js.
+                let topList = [{n: Game.name, s: Game.total}];
+                
+                b.innerHTML += `<p style="font-size:10px; color:#aaa; text-align:center;">Отображается локальная статистика. Для глобального онлайна требуется база данных.</p>`;
+                
+                topList.sort((a,b)=>b.s-a.s).forEach((u, i) => {
+                    b.innerHTML += `<div class="item" style="border-color:var(--neon-red); box-shadow:0 0 10px rgba(255,51,0,0.2);">
+                        <span style="font-family:'Orbitron'">#1 ${u.n} (Вы)</span>
+                        <b style="color:var(--neon-orange)">${u.s.toLocaleString()}</b>
+                    </div>`;
+                });
+            }
+            if(type==='ach') {
+                const data = [
+                    {n:"Серебро",v:10000, img:"1.png"},
+                    {n:"Золото",v:100000, img:"2.png"},
+                    {n:"Алмаз",v:1000000, img:"3.png"},
+                    {n:"Изумруд",v:10000000, img:"4.png"},
+                    {n:"Рубин",v:100000000, img:"5.png"},
+                    {n:"Аметист",v:1000000000, img:"6.png"}
+                ];
+                data.forEach(a => {
+                    let ok = Game.total >= a.v;
+                    b.innerHTML += `<div class="item">
+                        <div style="display:flex; align-items:center;">
+                            <img src="${ok ? a.img : 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='}" class="ach-img" alt="" style="${ok?'':'background:#333; border-radius:50%;'}">
+                            <span style="font-family:'Orbitron'; color:${ok?'#fff':'#555'}">${ok ? a.n : '???'}</span>
+                        </div>
+                        <b style="color:${ok?'#2ecc71':'#e74c3c'}">${ok?'ОТКРЫТО':'🔒 ' + a.v.toLocaleString()}</b>
+                    </div>`;
+                });
+            }
+            if(type==='reb') {
+                let cost = Math.pow(10, 6 + Game.reb);
+                b.innerHTML = `<div style="text-align:center"><h2>ПЕРЕРОЖДЕНИЕ</h2><p>Текущий множитель: x${Game.reb+1}</p><p>Цена: <span style="color:var(--neon-orange)">${cost.toLocaleString()}</span></p><button class="buy" style="width:100%;height:50px" onclick="Logic.rebirth()">ПОДТВЕРДИТЬ</button></div>`;
+            }
+            if(type==='promo') {
+                b.innerHTML = `<input id="p-in" type="text" placeholder="Введите код..." style="width:100%;padding:15px;background:#111;color:#fff;border:1px solid var(--neon-red);border-radius:8px;text-align:center;font-family:'Orbitron'"><button class="buy" style="width:100%;margin-top:15px" onclick="Logic.promo()">АКТИВИРОВАТЬ</button>`;
+            }
+        },
+        close() { document.getElementById('modal').style.display='none'; Game.save(); }
+    };
+
+    const Logic = {
+        wheelPrizes: [
+            { n: "1K", v: 1000, bg: "#222" }, { n: "5K", v: 5000, bg: "#333" },
+            { n: "10K", v: 10000, bg: "#444" }, { n: "20K", v: 20000, bg: "#555" },
+            { n: "50K", v: 50000, bg: "#666" }, { n: "100K", v: 100000, bg: "#777" },
+            { n: "200K", v: 200000, bg: "#ff3300" }, { n: "JACKPOT", v: "jack", bg: "#ff8800" }
+        ],
+        currentDegree: 0,
+
+        drawWheel() {
+            let w = document.getElementById('visual-wheel');
+            if(!w) return;
+            w.innerHTML = '';
+            let step = 360 / this.wheelPrizes.length;
+            
+            this.wheelPrizes.forEach((p, i) => {
+                let rot = step * i;
+                w.innerHTML += `
+                    <div class="wheel-slice" style="transform: rotate(${rot}deg) skewY(${90 - step}deg); background: ${p.bg};">
+                        <div class="wheel-text">${p.n}</div>
+                    </div>
+                `;
+            });
+            w.style.transform = `rotate(${this.currentDegree}deg)`;
+        },
+
+        buy(id) {
+            let u = Game.upgrades[id];
+            if(Game.score >= u.c) { Game.score -= u.c; Game.pC += u.p; Game.pS += u.s; u.c = Math.floor(u.c*2.8); Sounds.play('buy'); UI.open('shop'); Game.update(); } else Sounds.play('fail');
+        },
+        rebirth() {
+            let cost = Math.pow(10, 6 + Game.reb);
+            if(Game.score >= cost) { Game.reb++; Game.score=0; Game.pC=1; Game.pS=0; Game.upgrades.forEach(u=>u.c=u.id==0?200:(u.id==1?3000:(u.id==2?80000:700000))); Sounds.play('reb'); UI.close(); } else Sounds.play('fail');
+        },
+        promo() {
+            let c = document.getElementById('p-in').value;
+            // Добавлен новый промокод 086945195 на 100 000 000
+            const codes = {"08694519":10000, "086945191":100000, "086945192":1000000, "086945193":10000000, "086945195":100000000};
+            if(c==="086945194") { Game.maxNrg=9999999; Game.nrg=9999999; }
+            else if(codes[c]) { Game.score += codes[c]; Game.total += codes[c]; }
+            Sounds.play('buy'); UI.close(); Game.update();
+        },
+        spinWheel(btn) {
+            let now = Date.now();
+            let cd = 24 * 60 * 60 * 1000;
+            if(now - Game.lastSpin < cd && Game.extraSpins <= 0) return;
+
+            btn.disabled = true;
+            if (Game.extraSpins > 0) Game.extraSpins--; else Game.lastSpin = now;
+            Game.save();
+
+            // Выбор победителя (взвешенный рандом)
+            let winIdx = Math.floor(Math.random() * this.wheelPrizes.length);
+            // Немного подкрутим шансы, чтобы Джекпот (индекс 7) и 200К (индекс 6) выпадали реже
+            if(winIdx >= 6 && Math.random() > 0.1) winIdx = Math.floor(Math.random() * 6); 
+
+            let result = this.wheelPrizes[winIdx];
+            
+            // Расчет угла поворота
+            let step = 360 / this.wheelPrizes.length;
+            let targetRot = 360 * 5 + (360 - (winIdx * step)) - (step/2); // 5 полных оборотов + угол нужного сектора
+            this.currentDegree += targetRot;
+
+            let w = document.getElementById('visual-wheel');
+            let resEl = document.getElementById('wheel-res');
+            resEl.innerText = "КРУТИМ...";
+            w.style.transform = `rotate(${this.currentDegree}deg)`;
+            Sounds.play('reb');
+
+            setTimeout(() => {
+                resEl.innerText = result.n === "JACKPOT" ? "ДЖЕКПОТ! +5 СПИНОВ" : `ВЫИГРЫШ: +${result.v.toLocaleString()}`;
+                if(result.v === "jack") { Game.extraSpins += 5; } 
+                else { Game.score += result.v; Game.total += result.v; }
+                
+                Game.update(); Game.save();
+                btn.disabled = false;
+                if(Game.extraSpins <= 0) btn.disabled = true;
+            }, 4000);
+        }
+    };
+
+    Game.init();
+</script>
+</body>
+</html>
